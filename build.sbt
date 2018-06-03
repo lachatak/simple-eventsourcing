@@ -5,12 +5,12 @@ lazy val root =
     .settings(BaseSettings.default)
 
 lazy val core =
-  (project in file("core"))
+  Project("simple-eventsourcing-core", file("core"))
     .withTestConfig
     .withDependencies
 
 lazy val postgres =
-  (project in file("postgres"))
+  Project("simple-eventsourcing-postgres", file("postgres"))
     .withTestConfig
     .withDependencies
 

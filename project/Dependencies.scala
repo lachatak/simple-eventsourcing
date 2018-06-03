@@ -6,11 +6,19 @@ object Dependencies extends AutoPlugin {
   private val DockerTestkitVersion = "0.9.6"
   private val Fs2Version = "0.10.5"
   private val DoobieVersion = "0.5.1"
+  private val CirceVersion = "0.10.0-M1"
 
   private val fs2 =
     Seq(
       "co.fs2" %% "fs2-core"
     ).map(_ % Fs2Version)
+
+  private val circe =
+    Seq(
+      "io.circe" %% "circe-core",
+      "io.circe" %% "circe-generic",
+      "io.circe" %% "circe-parser"
+    ).map(_ % CirceVersion)
 
   private val logging =
     Seq(
@@ -45,6 +53,7 @@ object Dependencies extends AutoPlugin {
     Seq(
       libraryDependencies ++=
         fs2 ++
+          circe ++
           database ++
           doobie ++
           logging ++

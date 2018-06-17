@@ -31,18 +31,18 @@ class BankAccountEventSerializer extends EventSerializer[BankAccountEvent] {
 
   import org.qualiton.eventsourcing.json.JsonEncoding._
 
-  def serialize(event: BankAccountEvent) = event match {
+  def serialize(event: BankAccountEvent): SerializedEvent[BankAccountEvent] = event match {
     case event: BankAccountOpened => SerializedEvent("BankAccountOpened.V1", encode(event))
     case event: MoneyWithdrawn => SerializedEvent("MoneyWithdrawn.V1", encode(event))
   }
 
-  def deserialize(manifest: String, data: String) = manifest match {
+  def deserialize(manifest: String, data: String): BankAccountEvent = manifest match {
     case "BankAccountOpened.V1" => decode[BankAccountOpened](data)
     case "MoneyWithdrawn.V1" => decode[MoneyWithdrawn](data)
   }
 }
 
-class BankAccountAggregate[F[_] : Monad](id: Int, journal: JournalWithOptimisticLocking[F, BankAccountEvent])
+case class BankAccountAggregate[F[_] : Monad](id: Int, journal: JournalWithOptimisticLocking[F, BankAccountEvent])
   extends Aggregate[F, BankAccountEvent, BankAccountState](journal) {
 
   val aggregateId = s"bank-account-$id"

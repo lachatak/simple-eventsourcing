@@ -26,11 +26,13 @@ object TestConfig extends AutoPlugin {
     inConfig(IntegrationTest)(Defaults.testSettings) ++
     Seq(
       scalaSource in IntegrationTest := baseDirectory.value / "src/it/scala",
-      parallelExecution in IntegrationTest := false)
+      parallelExecution in IntegrationTest := false,
+      fork in IntegrationTest := true)
 
   private lazy val endToEndTestSettings: Seq[Def.Setting[_]] =
     inConfig(EndToEndTest)(Defaults.testSettings) ++
     Seq(
       scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala",
-      parallelExecution in EndToEndTest := false)
+      parallelExecution in EndToEndTest := false,
+      fork in EndToEndTest := true)
 }

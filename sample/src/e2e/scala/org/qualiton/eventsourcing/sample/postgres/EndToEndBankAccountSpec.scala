@@ -1,23 +1,30 @@
 package org.qualiton.eventsourcing.sample.postgres
 
+import cats.data.EitherT
 import cats.effect.IO
 import com.typesafe.scalalogging.LazyLogging
 import com.whisk.docker.impl.spotify.DockerKitSpotify
 import com.whisk.docker.scalatest.DockerTestKit
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import fs2.Stream
+import org.qualiton.eventsourcing.flyway.FlywayUpdater
 import org.qualiton.eventsourcing.postgres.PostgresJournal
+import org.qualiton.eventsourcing.util.syntax.eitherT._
+import org.qualiton.eventsourcing.util.syntax.stream._
 import org.scalactic.TypeCheckedTripleEquals
+import org.scalatest._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Minute, Span}
-import org.scalatest.{FeatureSpec, GivenWhenThen, Matchers}
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.language.postfixOps
 
-class BankAccountSpec
+class EndToEndBankAccountSpec
   extends FeatureSpec
     with GivenWhenThen
     with Matchers
+    with OptionValues
+    with EitherValues
     with Eventually
     with TypeCheckedTripleEquals
     with DockerTestKit
@@ -34,11 +41,15 @@ class BankAccountSpec
       timeout = Span(1, Minute),
       interval = Span(100, Millis))
 
+  val bankAccountTestApp = new BankAccountTestApp
+
   override def beforeAll(): Unit = {
     super.beforeAll()
+    bankAccountTestApp.start()
   }
 
   override def afterAll(): Unit = {
+    bankAccountTestApp.stop()
     super.afterAll()
   }
 
@@ -46,35 +57,43 @@ class BankAccountSpec
     info("As a user of Bank Account Aggregate")
     info("I want do bank account operations")
 
-    scenario(s"When a ...") {
-      Given(s"a valid ...")
+    scenario("When a ...") {
+      Given("a valid ...")
       When("it is ...")
+
+      val prepareBankAccounts: EitherT[Stream[IO, ?], Throwable, Unit] = for {
+        id <- Stream.emits(1 to 1000).covary[IO].toEitherTStream
+        bankAccount = BankAccountAggregate[IO](id, bankAccountTestApp.journal)
+        _ <- bankAccount.open("Krs", 1000).toEitherTStream
+        _ <- bankAccount.withdraw(100).toEitherTStream
+        _ <- bankAccount.withdraw(100).toEitherTStream
+      } yield ()
+
       Then("the the ..")
+      (prepareBankAccounts.value.drain ++ BankAccountAggregate[IO](500, bankAccountTestApp.journal)
+        .withdraw(100)
+        .toEitherTStream
+        .value)
+        .compile.last.unsafeRunSync().value shouldBe (Right(700))
     }
   }
 
-  trait Scope {
+  class BankAccountTestApp {
 
-    val dataSource: HikariDataSource = {
+    lazy val dataSource: HikariDataSource = {
       val config = new HikariConfig()
-      config.setJdbcUrl("jdbc:postgresql://localhost:5432/postgres")
+      config.setJdbcUrl(s"jdbc:postgresql://localhost:5432/postgres")
       config.setUsername("postgres")
       config.setPassword("postgres")
       new HikariDataSource(config)
     }
 
-    implicit val bankAccountEventSerializer = new BankAccountEventSerializer
+    implicit lazy val bankAccountEventSerializer = new BankAccountEventSerializer
+    lazy val journal = new PostgresJournal[IO, BankAccountEvent](dataSource)
 
-    val journal = new PostgresJournal[IO, BankAccountEvent](dataSource)
+    def start(): Unit = FlywayUpdater[IO](dataSource).unsafeRunSync()
 
-    1 to 1000 foreach { id =>
-      val bankAccount = new BankAccountAggregate[IO](id, journal)
-      for {
-        _ <- bankAccount.open("Krs", 1000)
-        _ <- bankAccount.withdraw(100)
-        _ <- bankAccount.withdraw(100)
-      } yield ()
-    }
+    def stop(): Unit = dataSource.close()
   }
 
 }

@@ -1,10 +1,10 @@
 package org.qualiton.eventsourcing.journal
 
-import cats.data.EitherT
+import org.qualiton.eventsourcing.Result
 
 trait JournalWithOptimisticLocking[F[_], Event] {
 
-  def read(aggregateId: String, offset: Long = 0): EitherT[F, Throwable, Seq[EventWithOffset[Event]]]
+  def read(aggregateId: String, offset: Long = 0): Result[F, List[EventWithOffset[Event]]]
 
-  def write(aggregateId: String, lastSeenOffset: Long, events: Seq[Event]): EitherT[F, Throwable, Unit]
+  def write(aggregateId: String, lastSeenOffset: Long, events: Seq[Event]): Result[F, Unit]
 }

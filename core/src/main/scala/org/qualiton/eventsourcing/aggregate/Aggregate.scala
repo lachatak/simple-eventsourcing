@@ -24,10 +24,10 @@ abstract class Aggregate[F[_] : Monad, Event, State](journal: JournalWithOptimis
       }
     } yield versionedState
 
-  def persist(currentVersionedState: VersionedState[State], events: Event*): EitherT[F, Throwable, State] = {
+  def persist(currentVersionedState: VersionedState[State], events: Event*): EitherT[F, Throwable, State] =
     for {
       _ <- journal.write(aggregateId, currentVersionedState.version, events)
       newState = events.foldLeft(currentVersionedState.state)(onEvent)
     } yield newState
-  }
+
 }

@@ -42,7 +42,7 @@ class BankAccountEventSerializer extends EventSerializer[BankAccountEvent] {
   }
 }
 
-class BankAccountAggregate[F[_]: Monad](id: Int, journal: JournalWithOptimisticLocking[F, BankAccountEvent])
+class BankAccountAggregate[F[_] : Monad](id: Int, journal: JournalWithOptimisticLocking[F, BankAccountEvent])
   extends Aggregate[F, BankAccountEvent, BankAccountState](journal) {
 
   val aggregateId = s"bank-account-$id"

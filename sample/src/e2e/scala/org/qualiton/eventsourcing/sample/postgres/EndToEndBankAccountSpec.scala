@@ -6,11 +6,8 @@ import com.typesafe.scalalogging.LazyLogging
 import com.whisk.docker.impl.spotify.DockerKitSpotify
 import com.whisk.docker.scalatest.DockerTestKit
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
-import fs2.Stream
 import org.qualiton.eventsourcing.flyway.FlywayUpdater
 import org.qualiton.eventsourcing.postgres.PostgresJournal
-import org.qualiton.eventsourcing.util.syntax.eitherT._
-import org.qualiton.eventsourcing.util.syntax.stream._
 import org.scalactic.TypeCheckedTripleEquals
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
@@ -57,24 +54,22 @@ class EndToEndBankAccountSpec
     info("As a user of Bank Account Aggregate")
     info("I want do bank account operations")
 
-    scenario("When a ...") {
-      Given("a valid ...")
-      When("it is ...")
+    scenario("When I open a bank account with 1000 and withdraw two times 100 the resulting balance should be 800") {
+      Given("a valid bank account with 1000")
+      val openBankAccount: EitherT[IO, Throwable, BankAccountAggregate[IO]] = for {
+        bankAccount <- EitherT.right[Throwable](IO(BankAccountAggregate[IO](1, bankAccountTestApp.journal)))
+        _ <- bankAccount.open("Krs", 1000)
+      } yield bankAccount
 
-      val prepareBankAccounts: EitherT[Stream[IO, ?], Throwable, Unit] = for {
-        id <- Stream.emits(1 to 1000).covary[IO].toEitherTStream
-        bankAccount = BankAccountAggregate[IO](id, bankAccountTestApp.journal)
-        _ <- bankAccount.open("Krs", 1000).toEitherTStream
-        _ <- bankAccount.withdraw(100).toEitherTStream
-        _ <- bankAccount.withdraw(100).toEitherTStream
-      } yield ()
+      When("withdraw two times 100")
+      val transactions = for {
+        bankAccount <- openBankAccount
+        _ <- bankAccount.withdraw(100)
+        balance <- bankAccount.withdraw(100)
+      } yield balance
 
-      Then("the the ..")
-      (prepareBankAccounts.value.drain ++ BankAccountAggregate[IO](500, bankAccountTestApp.journal)
-        .withdraw(100)
-        .toEitherTStream
-        .value)
-        .compile.last.unsafeRunSync().value shouldBe (Right(700))
+      Then("the resulting balance should be 800")
+      transactions.value.unsafeRunSync().right.value shouldBe (800)
     }
   }
 

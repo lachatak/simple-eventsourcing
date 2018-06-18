@@ -76,3 +76,4 @@ case class BankAccountAggregate[F[_] : Monad](id: Int, journal: JournalWithOptim
     } yield updatedBankAccount.balance
   }
 }
+
